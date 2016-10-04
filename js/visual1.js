@@ -1,29 +1,6 @@
 $(function() {
-  // 1. Get contributions data
-  // $.getJSON('./data/contributors.json')
-  //   .done(function(data) {
-  //     data.forEach(function(user) {
-  //       var contributionMap = user.weeks.reduce(function(pre, cur) {
-  //         pre['additions'] += cur['a'];
-  //         pre['deletions'] += cur['d'];
-  //         pre['commits'] += cur['c'];
-  //         return pre;
-  //       }, {
-  //         'additions': 0,
-  //         'commits': 0,
-  //         'deletions': 0
-  //       });
-  //       console.log(user.author.login, contributionMap);
-  //     });
-  //   })
-  //   .fail(function() {
-  //
-  //   });
-
   var causes = ["wounds", "other", "disease"];
   var types = ["additions", "deletions", "commits"];
-
-  var parseDate = d3.time.format("%m/%Y").parse;
 
   var margin = {
       top: 50,
@@ -52,86 +29,122 @@ $(function() {
     .tickSize(2)
     .orient("left");
 
-  var svg = d3.select("#visual1").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-  d3.json("./data/contributors.json", function(error, contributors) {
-    if (error) return console.warn(error);
-    var userdata = contributors.reduce(function(pre, cur) {
-      var counts = cur.weeks.reduce(function(pre, cur) {
-        pre['a'] += cur['a'];
-        pre['d'] += cur['d'];
-        pre['c'] += cur['c'];
-        return pre;
-      }, {
-        'a': 0,
-        'd': 0,
-        'c': 0
-      });
-      pre[0].unshift({x: cur.author.login, y: counts['a']});
-      pre[1].unshift({x: cur.author.login, y: counts['d']});
-      pre[2].unshift({x: cur.author.login, y: counts['c']});
-      return pre;
-    }, [[],[],[]]);
-
-    var layers = d3.layout.stack()(userdata);
-    x.domain(layers[0].map(function(d) {
-      return d.x;
-    }));
-    y.domain([0, d3.max(layers[layers.length - 1], function(d) {
-      return d.y0 + d.y;
-    })]).nice();
-
-    var layer = svg.selectAll(".layer")
-      .data(layers)
-      .enter().append("g")
-      .attr("class", "layer")
-      .style("fill", function(d, i) {
-        return z(i);
-      });
-
-    layer.selectAll("rect")
-      .data(function(d) {
-        return d;
-      })
-      .enter().append("rect")
-      .attr("x", function(d) {
-        return x(d.x);
-      })
-      .attr("y", function(d) {
-        return y(d.y + d.y0);
-      })
-      .attr("height", function(d) {
-        return y(d.y0) - y(d.y + d.y0);
-      })
-      .attr("width", x.rangeBand() - 1);
-
-    svg.append("g")
-      .attr("class", "axis axis--y")
-      .attr("transform", "translate(0,0)")
-      .call(yAxis);
-
-    svg.append("g")
-      .attr("class", "axis axis--x")
-      .attr("transform", "translate(0," + height + ")")
-      .call(xAxis)
-      .selectAll("text")
-      .attr("y", 0)
-      .attr("x", 9)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(90)")
-      .style("text-anchor", "start");
-  });
-
-  function type(d) {
-    d.date = parseDate(d.date);
-    causes.forEach(function(c) {
-      d[c] = +d[c];
+  var tip = d3.tip()
+    .attr('class', 'd3-tip')
+    .offset([-10, 0])
+    .html(function(d) {
+      return "<strong>"+d.label+"</strong> <span style='color:red'>" + d.y + "</span>";
     });
-    return d;
-  }
 
+  var showAll = d3.select('#visual1').append("button")
+          .attr("type","button")
+          .attr("class","btn btn-primary bar-chart-button")
+          .text("Show all")
+          .on("click", function() {
+            buildGraph('all');
+          });
+
+  var topTenOnly = d3.select('#visual1').append("button")
+          .attr("type","button")
+          .attr("class","btn btn-primary bar-chart-button")
+          .text("Top 10 only")
+          .on("click", function() {
+            buildGraph('topten');
+          });
+
+  var hideTopTen = d3.select('#visual1').append("button")
+          .attr("type","button")
+          .attr("class","btn btn-primary bar-chart-button")
+          .text("Hide top ten")
+          .on("click", function() {
+            buildGraph('hidetopten');
+          });
+
+  function buildGraph(mode) {
+    d3.select("#visual1-svg").remove();
+    var svg = d3.select("#visual1").append("svg")
+      .attr("id","visual1-svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    svg.call(tip);
+    d3.json("./data/contributors.json", function(error, contributors) {
+      if (mode == 'topten') {
+        contributors = contributors.slice(90); // 90-100
+      } else if (mode == 'hidetopten') {
+        for (var i=0;i<10;i++) {
+          contributors.pop();
+        }
+      }
+      if (error) return console.warn(error);
+      var userdata = contributors.reduce(function(pre, cur) {
+        var counts = cur.weeks.reduce(function(pre, cur) {
+          pre['a'] += cur['a'];
+          pre['d'] += cur['d'];
+          pre['c'] += cur['c'];
+          return pre;
+        }, {
+          'a': 0,
+          'd': 0,
+          'c': 0
+        });
+        pre[0].unshift({x: cur.author.login, y: counts['a'], label: 'Additions'});
+        pre[1].unshift({x: cur.author.login, y: counts['d'], label: 'Deletions'});
+        pre[2].unshift({x: cur.author.login, y: counts['c'], label: 'Commits'});
+        return pre;
+      }, [[],[],[]]);
+
+      var layers = d3.layout.stack()(userdata);
+      x.domain(layers[0].map(function(d) {
+        return d.x;
+      }));
+      y.domain([0, d3.max(layers[layers.length - 1], function(d) {
+        return d.y0 + d.y;
+      })]).nice();
+
+      var layer = svg.selectAll(".layer")
+        .data(layers)
+        .enter().append("g")
+        .attr("class", "layer")
+        .style("fill", function(d, i) {
+          return z(i);
+        });
+
+      layer.selectAll("rect")
+        .data(function(d) {
+          return d;
+        })
+        .enter().append("rect")
+        .attr("x", function(d) {
+          return x(d.x);
+        })
+        .attr("y", function(d) {
+          return y(d.y + d.y0);
+        })
+        .attr("height", function(d) {
+          return y(d.y0) - y(d.y + d.y0);
+        })
+        .attr("width", x.rangeBand() - 1)
+        .on('mouseover', tip.show)
+        .on('mouseout', tip.hide);
+
+      svg.append("g")
+        .attr("class", "axis axis--y")
+        .attr("transform", "translate(0,0)")
+        .call(yAxis);
+
+      svg.append("g")
+        .attr("class", "axis axis--x")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+        .selectAll("text")
+        .attr("y", 0)
+        .attr("x", 9)
+        .attr("dy", ".35em")
+        .attr("transform", "rotate(90)")
+        .style("text-anchor", "start");
+    });
+  }
+  buildGraph("all");
 });
