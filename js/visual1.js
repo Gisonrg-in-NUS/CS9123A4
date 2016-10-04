@@ -144,6 +144,45 @@ $(function() {
         .attr("dy", ".35em")
         .attr("transform", "rotate(90)")
         .style("text-anchor", "start");
+      var legendElementWidth = 80; 
+	var legentElementHeight = 14
+	var colors = ["#1F77B4", "#FF7F0E", "#2CA02C"];
+     svg.append("rect")
+          .attr("x", legendElementWidth * 0)
+          .attr("y", height+100)
+          .attr("width", legendElementWidth)
+          .attr("height", legentElementHeight )
+          .style("fill", colors[0]);
+     svg.append("rect")
+          .attr("x", legendElementWidth * 1)
+          .attr("y", height+100)
+          .attr("width", legendElementWidth)
+          .attr("height", legentElementHeight )
+          .style("fill", colors[1]);
+     svg.append("rect")
+          .attr("x", legendElementWidth * 2)
+          .attr("y", height+100)
+          .attr("width", legendElementWidth)
+          .attr("height", legentElementHeight )
+          .style("fill", colors[2]);
+     svg.append("text")
+          .attr("class", "mono")
+          .text("Addtions")
+          .attr("x", legendElementWidth * 0)
+          .attr("y", height + 2 * legentElementHeight + 100);
+     svg.append("text")
+          .attr("class", "mono")
+          .text("Deletions")
+          .attr("x", legendElementWidth * 1)
+          .attr("y", height + 2 * legentElementHeight + 100);
+     svg.append("text")
+          .attr("class", "mono")
+          .text("Commits")
+          .attr("x", legendElementWidth * 2)
+          .attr("y", height + 2 * legentElementHeight + 100);
+
+          
+
     });
   }
   buildGraph("all");
